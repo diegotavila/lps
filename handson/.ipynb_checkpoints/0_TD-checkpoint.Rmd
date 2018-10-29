@@ -131,67 +131,6 @@ From 1 to 5 bytes. You should repeat all the steps of previous section using at 
 df1 <- read.csv("data/PP_size_1.csv");
 head(df1);
 ```
-#Descritpitve statistcs of PP_size_1
-
-As instructed, I will repeat the steps of the previous section. 
-
-Reading the file "PP_size_1"" in the df1 variable:
-
-```{r}
-df1 <- read.csv("data/PP_size_1.csv");
-head(df1);
-```
-
-Ploting the datapoints:
-
-```{r, fig.width=6, fig.height=3.5}
-plot(df1$time, ylab="Time (seconds)", xlab="Measurement Number");
-```
- Summary of the data:
- 
-```{r}
-summary(df1$time);
-```
-
-Hmm, values are too low. I will try to switch to using microseconds:
-
-```{r}
-df1$time = df1$time * 1000000
-```
-
-```{r}
-summary(df1$time);
-```
-
-That's better. I would have liked to used another array, but I don't know how yet. I do'nt even know a good name for it (microDf1, perhaps?).
-
-I should replot the data points:
-
-```{r, fig.width=6, fig.height=3.5}
-plot(df1$time, ylab="Time (microseconds)", xlab="Measurement Number");
-```
-Let's see the boxplot and the histogram:
-
-```{r, fig.width=2, fig.height=3.5}
-boxplot(df1$time, ylab="Time (microseconds)")
-```
-```{r, fig.width=4}
-hist(df1$time, breaks=10,xlab="Time (microseconds)", main = "Histogram of PP_Size_1")
-```
-
-Lots of outliers. Should I remove them? How?
-
-```{r, fig.width=4}
-hist(df1$time[c(df1$time < 100)], breaks=10,xlab="Time (microseconds)", main = "Histogram of PP_Size_1")
-```
-That's better. I don't know what top value I should have chosen. I also only see 8 bars.
-
-
-```{r, fig.width=4}
-hist(df1$time[c(df1$time < 100)], breaks=11,xlab="Time (microseconds)", main = "Histogram of PP_Size_1")
-```
-
-And now I see 15. (16? Maybe?) Why?
 
 # Iteration Duration of a Geophysics Parallel Application
 
