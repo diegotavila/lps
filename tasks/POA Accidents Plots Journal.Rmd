@@ -1,0 +1,232 @@
+---
+title: "POA Accidents"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Download
+
+```{r}
+library(tidyverse)
+file = "acidentes-2016.csv"
+if(!file.exists(file)){
+  download.file("http://datapoa.com.br/storage/f/2017-08-03T13%3A19%3A45.538Z/acidentes-2016.csv",
+	destfile=file)
+}
+```
+
+#Preliminary data analysis
+
+```{r}
+df <- read.csv(file, header=TRUE, sep=";");
+df;
+```
+
+
+```{r}
+ df %>%  str
+```
+
+```{r}
+ df %>%  summary
+```
+
+#Is there a time of the year with more accidents?
+
+I will try to analyse the number of accidents by month. First I will select the data:
+
+```{r}
+Months <-  as.factor(c("JAN", "FEV", "MAR", "APR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DEC"))
+
+df %>%
+  select(MES) %>%
+  group_by(MES) %>%
+  summarize(NumberOfAccidents = n()) %>%
+  mutate(MonthAbr = Months[MES]) %>%
+  select(MonthAbr, NumberOfAccidents)-> df.accidentsByMonth;
+df.accidentsByMonth;
+levels(df.accidentsByMonth$MonthAbr) <-c("JAN", "FEV", "MAR", "APR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DEC") ;
+levels(df.accidentsByMonth$MonthAbr) ;
+```
+
+
+I also want to try to plot something:
+
+```{r}
+  df.accidentsByMonth %>% ggplot(aes(x=MonthAbr, y = NumberOfAccidents, fill = MonthAbr )) + 
+  geom_col() + 
+  #geom_text(aes(label=..count..)) +
+  #scale_fill_brewer(palette = "SAT1", guide=FALSE)
+  ylab("Total Number of Accidents")
+```
+
+
+How about by date? First I convert the DATA column to the date format, then I count the number of accidents per date.
+
+```{r}
+df %>%
+  select(DATA) %>%
+  mutate(DATA = as.Date(DATA, format = "%Y-%m-%d")) %>%
+  group_by(DATA) %>%
+  summarize(NumberOfAccidents = n())   -> df.accidentsByDate;
+df.accidentsByDate;
+```
+
+Then I plot the previous dataframe: 
+
+```{r}
+  df.accidentsByDate %>% 
+  ggplot(aes(x=DATA,y=NumberOfAccidents)) + 
+  geom_line()
+```
+
+There's too much noise. Let's smooth the data a little. I should use a gaussian filter, but since I don't know how yet, I will simply average each 7 day period.
+
+```{r}
+df.accidentsByDate %>%
+   mutate(smooth = (NumberOfAccidents
+          + lag(NumberOfAccidents,1) 
+          + lag(NumberOfAccidents,2)
+          + lag(NumberOfAccidents,3)
+          + lead(NumberOfAccidents,1)
+          + lead(NumberOfAccidents,2)
+          + lead(NumberOfAccidents,3)
+          )/7) ->df.accidentsByDate
+df.accidentsByDate;
+
+df.accidentsByDate %>% 
+  ggplot(aes(x=DATA,y=smooth)) + 
+  geom_line() + 
+  scale_x_date("Days",date_breaks = "1 month", date_labels = "%b") +
+  ylab("7-day rolling average")
+```
+This has problems, since it discards the edges of the dataframe, but its adequate.
+
+
+#How many vehicles are usually involved?
+
+There are many types of vehicles that are separated by collumns in the dataset. I will try to create a new collumn that aggregates the total number of vehicles in an accident.
+
+```{r}
+df %>%
+mutate(TOTALVEHICLES = AUTO + TAXI + LOTACAO + ONIBUS_URB + ONIBUS_MET + ONIBUS_INT + CAMINHAO + MOTO + CARROCA + BICICLETA + OUTRO) -> df.totalVehicles; 
+df.totalVehicles %>% select(TOTALVEHICLES);
+df.totalVehicles %>% select(TOTALVEHICLES) %>% summary()
+```
+
+```{r}
+df.totalVehicles %>% 
+  select(TOTALVEHICLES) %>%
+  ggplot(aes(x=TOTALVEHICLES)) + 
+  geom_bar() + 
+  geom_text(stat='count',  aes(label=..count..), nudge_y = 250) +
+  #scale_fill_brewer(palette = "Dark2", guide=FALSE) +
+  scale_x_continuous("Number of Vehicles", breaks = c(0,1,2,3,4,5,6,7) ) + 
+  ylab("Number of Accidents") 
+#hist(df1$TOTALVEHICLES, breaks=10, xlab="Z", main="Total Vehicles")
+```
+
+There are accidents with 0 vehicles?
+```{r}
+df.totalVehicles %>% filter(TOTALVEHICLES ==0)
+```
+
+
+Weird.
+
+#Is there a specific weekday with more accidents?
+
+```{r}
+levels(df$DIA_SEM) <- c("DOMINGO", "SEGUNDA-FEIRA", "TERCA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA", "SEXTA-FEIRA", "SABADO")
+
+df.accidentsByWeekDay <- df %>%
+  select(DIA_SEM) #%>%
+  #group_by(DIA_SEM) %>%
+  #summarize(NumberOfAccidents = n())  
+df.accidentsByWeekDay;
+
+df.accidentsByWeekDay %>% 
+  ggplot(aes(x=DIA_SEM, fill=DIA_SEM)) + 
+  geom_bar() + 
+  geom_text(stat='count',  aes(label=..count..)) +
+  scale_fill_brewer(palette = "Dark2", guide=FALSE) +
+  xlab("Weekday") + 
+  ylab("Total Number of Accidents") + 
+  coord_flip()
+```
+
+
+
+
+
+
+
+#Advanced: are there some area in POA with more accidents?
+
+Simple answer: Which region has more accidents:
+
+
+
+
+```{r}
+df %>%
+  select(REGIAO) %>%
+  group_by(REGIAO) %>%
+  summarize(NumberOfAccidents = n()) -> df.accidentsByRegion;
+df.accidentsByRegion;
+```
+
+Another simple answer: Are there more accidents in intersections?
+
+```{r}
+df %>%
+  select(LOCAL) %>%
+  group_by(LOCAL) %>%
+  summarize(NumberOfAccidents = n()) -> df.accidentsByLocal;
+df.accidentsByLocal;
+```
+
+
+By full address. I rely on LOCAL_VIA being consistent:
+
+```{r}
+df %>%
+  select(LOCAL_VIA) %>%
+  group_by(LOCAL_VIA) %>%
+  summarize(NumberOfAccidents = n()) %>% arrange(desc(NumberOfAccidents)) -> df.accidentsByFullAddress;
+df.accidentsByFullAddress;
+```
+
+
+By road. This is more complicated, as there are two columns, with the second only being present when it is an intersection. I have to perform a join of the total number of accidents based both columns and sum that number.
+
+
+```{r}
+df %>%
+  select(LOG1) %>%
+  group_by(LOG1) %>%
+  summarize(NumberOfAccidents = n()) %>%
+  arrange(desc(NumberOfAccidents)) -> df.accidentsByLog1;
+
+colnames(df.accidentsByLog1)[colnames(df.accidentsByLog1)=="LOG1"] <- "LOG"
+
+
+df %>%
+  select(LOG2) %>%
+  group_by(LOG2) %>%
+  summarize(NumberOfAccidents = n()) %>% 
+  arrange(desc(NumberOfAccidents)) %>%
+  filter (LOG2 != "") -> df.accidentsByLog2;
+
+colnames(df.accidentsByLog2)[colnames(df.accidentsByLog2)=="LOG2"] <- "LOG"
+
+df.accidentsByLog <- merge(x = df.accidentsByLog1, y = df.accidentsByLog2, by="LOG",  all = TRUE)
+df.accidentsByLog[is.na(df.accidentsByLog)]<-0
+df.accidentsByLog <- df.accidentsByLog %>%  mutate(NumberOfAccidents = NumberOfAccidents.x + NumberOfAccidents.y) %>% select(LOG, NumberOfAccidents) %>% arrange(desc(NumberOfAccidents))
+
+df.accidentsByLog;
+
+```

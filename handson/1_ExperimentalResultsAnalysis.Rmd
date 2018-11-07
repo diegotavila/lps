@@ -1,0 +1,57 @@
+---
+title: 'Hands-on: What do you think about these experimental results'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Introduction
+We were tasked to check about the experimental results found in the folder "1_Experiences".
+
+
+#File 1 - Opening
+
+```{r}
+library(readr);
+Exp1 <- read_csv("1_Experiences/Exp1.csv");
+Exp1;
+```
+
+
+I have no idea what this is. An index column, a double column and another index without a column name?
+
+#File 2 - Opening
+
+```{r}
+library(readr);
+Exp2 <- read_csv("1_Experiences/Exp2.csv");
+Exp2;
+```
+
+#File 3 - Opening
+
+```{r}
+library(readr);
+Exp5 <- read_csv("1_Experiences/Exp3.csv");
+Exp5;
+```
+#File 4 - Opening
+
+```{r}
+library(readr);
+Exp5 <- read_csv("1_Experiences/Exp4.csv");
+Exp5;
+```
+#File 5 - Opening
+
+```{r}
+library(readr);
+Exp5 <- read_csv("1_Experiences/Exp5.csv");
+Exp5;
+```
+
+I still have no idea.
+
+
