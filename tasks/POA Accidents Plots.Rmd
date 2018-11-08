@@ -1,0 +1,103 @@
+---
+title: "POA Accidents Plots"
+output: pdf_document
+---
+
+
+
+#Download
+
+```{r}
+library(tidyverse)
+file = "acidentes-2016.csv"
+if(!file.exists(file)){
+  download.file("http://datapoa.com.br/storage/f/2017-08-03T13%3A19%3A45.538Z/acidentes-2016.csv",
+	destfile=file)
+}
+```
+
+
+#Is there a time of the year with more accidents?
+
+
+
+How do I represent a time (or interval) of year. A simple solution would be by month, but I decided to be more detailed and did by date. Date is represented in the DATA column. So, first I convert the DATA column to the date format, then I count the number of accidents per date.
+
+```{r}
+df %>%
+  select(DATA) %>%
+  mutate(DATA = as.Date(DATA, format = "%Y-%m-%d")) %>%
+  group_by(DATA) %>%
+  summarize(NumberOfAccidents = n())   -> df.accidentsByDate;
+df.accidentsByDate;
+```
+
+If I plot this number, there will be too much noise in the plot. Instead, I smooth the data a little. I should use a gaussian filter, but since I don't know how yet, I will simply perform a rolling average of each 7 day period.
+
+```{r}
+df.accidentsByDate %>%
+   mutate(smooth = (NumberOfAccidents
+          + lag(NumberOfAccidents,1) 
+          + lag(NumberOfAccidents,2)
+          + lag(NumberOfAccidents,3)
+          + lead(NumberOfAccidents,1)
+          + lead(NumberOfAccidents,2)
+          + lead(NumberOfAccidents,3)
+          )/7) ->df.accidentsByDate
+
+
+df.accidentsByDate %>% 
+  ggplot(aes(x=DATA,y=smooth)) + 
+  geom_line() + 
+  scale_x_date("Days",date_breaks = "1 month", date_labels = "%b") +
+  ylab("7-day rolling average")
+```
+
+This has problems, since it discards the edges of the dataframe, but its adequate.
+
+
+#How many vehicles are usually involved?
+
+There are many types of vehicles that are separated by collumns in the dataset. I will try to create a new collumn that aggregates the total number of vehicles in an accident. Then I simply plot the number of instances of each total number of vehicles in a histogram.
+
+```{r}
+df %>%
+mutate(TOTALVEHICLES = AUTO + TAXI + LOTACAO + ONIBUS_URB + ONIBUS_MET + ONIBUS_INT + CAMINHAO + MOTO + CARROCA + BICICLETA + OUTRO) -> df.totalVehicles; 
+
+
+df.totalVehicles %>% 
+  select(TOTALVEHICLES) %>%
+  ggplot(aes(x=TOTALVEHICLES)) + 
+  geom_bar() + 
+  geom_text(stat='count',  aes(label=..count..), nudge_y = 250) +
+  scale_x_continuous("Number of Vehicles", breaks = c(0,1,2,3,4,5,6,7) ) + 
+  ylab("Number of Accidents") 
+
+```
+
+Curiously, there is an accident with 0 vehicles.
+
+#Is there a specific weekday with more accidents?
+
+The weekday is defined in the dataset as a factor. Counting the number for each weekday is simple, but the order of the factors is wrong. I first estabilish this order, then I plot the number of instances of each weekday. I also swap the coordinates, so that the weekdays can be read more easily. 
+
+```{r}
+levels(df$DIA_SEM) <- c("DOMINGO", "SEGUNDA-FEIRA", "TERCA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA", "SEXTA-FEIRA", "SABADO")
+
+df.accidentsByWeekDay <- df %>%
+  select(DIA_SEM)
+
+df.accidentsByWeekDay %>% 
+  ggplot(aes(x=DIA_SEM, fill=DIA_SEM)) + 
+  geom_bar() + 
+  geom_text(stat='count',  aes(label=..count..), nudge_y = -100) +
+  scale_fill_brewer(palette = "Dark2", guide=FALSE) +
+  theme_light() +
+  scale_y_continuous(limits = c(0,2200), expand = c(0,0)) +
+  xlab("Weekday") + 
+  ylab("Total Number of Accidents") + 
+  coord_flip()
+  
+```
+
+
